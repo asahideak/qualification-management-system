@@ -1,0 +1,61 @@
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# Dependencies
+node_modules/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Build outputs
+build/
+dist/
+.next/
+.nuxt/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
+
+# AppGenius temporary files
+.appgenius_temp/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Package locks (keep package-lock.json for reproducible builds)
+yarn.lock
+
+# TypeScript
+*.tsbuildinfo
+
+# Runtime
+.pnp.*
+.yarn/
+
+# Prisma
+prisma/migrations/
+
+# Local development
+uploads/
+logs/
