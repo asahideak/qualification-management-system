@@ -1,0 +1,2 @@
+# This file ensures the temp directory is tracked by git
+# Actual temp files are ignored by .gitignore

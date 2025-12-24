@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+*storybook.log
+storybook-static
+
+# Test results and coverage
+coverage/
+*.lcov
+.nyc_output
+test-results/
+playwright-report/
+test-results-*
+
+# Vitest
+.vitest/
+
+# Screenshots and temp files
+tests/screenshots/*
+!tests/screenshots/.gitkeep
+tests/temp/*
+!tests/temp/.gitkeep
+
+# Debug logs
+debug-storybook.log
