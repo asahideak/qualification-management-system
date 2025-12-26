@@ -1,0 +1,10 @@
+
+> frontend@0.0.0 dev
+> vite --port 3247
+
+Port 3247 is in use, trying another one...
+
+  VITE v5.4.21  ready in 527 ms
+
+  ➜  Local:   http://localhost:3248/
+  ➜  Network: use --host to expose
