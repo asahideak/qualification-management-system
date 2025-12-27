@@ -1,0 +1,467 @@
+import { Request, Response } from 'express';
+import { QualificationService, DefaultQualificationService } from '../services/qualification.service';
+import logger from '../lib/logger';
+import { ApiResponse, Qualification, AllEmployeeQualificationTableRow } from '../types';
+
+export interface QualificationController {
+  createQualification(req: Request, res: Response): Promise<void>;
+  updateQualification(req: Request, res: Response): Promise<void>;
+  deleteQualification(req: Request, res: Response): Promise<void>;
+  getQualificationById(req: Request, res: Response): Promise<void>;
+  getQualificationsByEmployeeId(req: Request, res: Response): Promise<void>;
+  getAllEmployeeQualifications(req: Request, res: Response): Promise<void>;
+  exportQualificationsCsv(req: Request, res: Response): Promise<void>;
+}
+
+export class DefaultQualificationController implements QualificationController {
+  constructor(private qualificationService: QualificationService = new DefaultQualificationService()) {}
+
+  async createQualification(req: Request, res: Response): Promise<void> {
+    try {
+      logger.info('POST /api/qualifications - 資格登録開始', {
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+        bodySize: JSON.stringify(req.body).length,
+      });
+
+      const qualification = await this.qualificationService.createQualification(req.body);
+
+      const response: ApiResponse<Qualification> = {
+        success: true,
+        data: qualification,
+        message: '資格を登録しました',
+      };
+
+      logger.info('POST /api/qualifications - 資格登録成功', {
+        qualificationId: qualification.qualificationId,
+        employeeId: qualification.employeeId,
+        qualificationName: qualification.qualificationName,
+      });
+
+      res.status(201).json(response);
+    } catch (error) {
+      logger.error('POST /api/qualifications - 資格登録エラー', {
+        requestBody: req.body,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('入力データが無効') || message.includes('指定されていません')) {
+          statusCode = 400;
+          userMessage = '入力データが無効です';
+        } else if (message.includes('見つかりません')) {
+          statusCode = 404;
+          userMessage = '指定されたデータが見つかりません';
+        } else if (message.includes('既に登録されています') || message.includes('重複')) {
+          statusCode = 409;
+          userMessage = '既に同じ資格が登録されています';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async updateQualification(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      logger.info('PUT /api/qualifications/:id - 資格更新開始', {
+        qualificationId: id,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+        bodySize: JSON.stringify(req.body).length,
+      });
+
+      // リクエストボディに資格IDを追加
+      const updateData = {
+        ...req.body,
+        qualificationId: id,
+      };
+
+      const qualification = await this.qualificationService.updateQualification(id, updateData);
+
+      const response: ApiResponse<Qualification> = {
+        success: true,
+        data: qualification,
+        message: '資格を更新しました',
+      };
+
+      logger.info('PUT /api/qualifications/:id - 資格更新成功', {
+        qualificationId: id,
+        updatedFields: Object.keys(req.body),
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('PUT /api/qualifications/:id - 資格更新エラー', {
+        qualificationId: req.params.id,
+        requestBody: req.body,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('入力データが無効') || message.includes('無効な資格ID')) {
+          statusCode = 400;
+          userMessage = '入力データが無効です';
+        } else if (message.includes('見つかりません')) {
+          statusCode = 404;
+          userMessage = '指定された資格が見つかりません';
+        } else if (message.includes('既に登録されています') || message.includes('重複')) {
+          statusCode = 409;
+          userMessage = '既に同じ資格が登録されています';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async deleteQualification(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      logger.info('DELETE /api/qualifications/:id - 資格削除開始', {
+        qualificationId: id,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      await this.qualificationService.deleteQualification(id);
+
+      const response: ApiResponse<null> = {
+        success: true,
+        data: null,
+        message: '資格を削除しました',
+      };
+
+      logger.info('DELETE /api/qualifications/:id - 資格削除成功', {
+        qualificationId: id,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('DELETE /api/qualifications/:id - 資格削除エラー', {
+        qualificationId: req.params.id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('無効な資格ID')) {
+          statusCode = 400;
+          userMessage = '無効な資格IDです';
+        } else if (message.includes('見つかりません')) {
+          statusCode = 404;
+          userMessage = '指定された資格が見つかりません';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async getQualificationById(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      logger.info('GET /api/qualifications/:id - 資格詳細取得開始', {
+        qualificationId: id,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      const qualification = await this.qualificationService.getQualificationById(id);
+
+      const response: ApiResponse<Qualification> = {
+        success: true,
+        data: qualification,
+        message: '資格詳細を取得しました',
+      };
+
+      logger.info('GET /api/qualifications/:id - 資格詳細取得成功', {
+        qualificationId: id,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('GET /api/qualifications/:id - 資格詳細取得エラー', {
+        qualificationId: req.params.id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('無効な資格ID')) {
+          statusCode = 400;
+          userMessage = '無効な資格IDです';
+        } else if (message.includes('見つかりません')) {
+          statusCode = 404;
+          userMessage = '指定された資格が見つかりません';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async getQualificationsByEmployeeId(req: Request, res: Response): Promise<void> {
+    try {
+      const { employeeId } = req.params;
+      logger.info('GET /api/employees/:employeeId/qualifications - 社員別資格一覧取得開始', {
+        employeeId,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      const qualifications = await this.qualificationService.getQualificationsByEmployeeId(employeeId);
+
+      const response: ApiResponse<Qualification[]> = {
+        success: true,
+        data: qualifications,
+        message: '社員別資格一覧を取得しました',
+      };
+
+      logger.info('GET /api/employees/:employeeId/qualifications - 社員別資格一覧取得成功', {
+        employeeId,
+        count: qualifications.length,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('GET /api/employees/:employeeId/qualifications - 社員別資格一覧取得エラー', {
+        employeeId: req.params.employeeId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('指定されていません')) {
+          statusCode = 400;
+          userMessage = '社員IDが指定されていません';
+        } else if (message.includes('見つかりません')) {
+          statusCode = 404;
+          userMessage = '指定された社員が見つかりません';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async getAllEmployeeQualifications(req: Request, res: Response): Promise<void> {
+    try {
+      logger.info('GET /api/qualifications/all-employees - 全社員資格一覧取得開始', {
+        query: req.query,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      // クエリパラメータからフィルター条件を構築
+      const filter: any = {};
+
+      if (req.query.companyId && typeof req.query.companyId === 'string') {
+        filter.companyId = req.query.companyId;
+      }
+
+      if (req.query.departmentId && typeof req.query.departmentId === 'string') {
+        filter.departmentId = req.query.departmentId;
+      }
+
+      if (req.query.expirationStatus && typeof req.query.expirationStatus === 'string') {
+        filter.expirationStatus = req.query.expirationStatus;
+      }
+
+      if (req.query.keyword && typeof req.query.keyword === 'string') {
+        filter.searchKeyword = req.query.keyword.trim();
+      }
+
+      // フィルター条件が空の場合はundefinedを渡す
+      const filterToApply = Object.keys(filter).length > 0 ? filter : undefined;
+
+      const qualifications = await this.qualificationService.getAllEmployeeQualifications(filterToApply);
+
+      const response: ApiResponse<AllEmployeeQualificationTableRow[]> = {
+        success: true,
+        data: qualifications,
+        message: '全社員資格一覧を取得しました',
+      };
+
+      logger.info('GET /api/qualifications/all-employees - 全社員資格一覧取得成功', {
+        filter: filterToApply,
+        count: qualifications.length,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('GET /api/qualifications/all-employees - 全社員資格一覧取得エラー', {
+        query: req.query,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('フィルター条件が無効')) {
+          statusCode = 400;
+          userMessage = 'フィルター条件が無効です';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async exportQualificationsCsv(req: Request, res: Response): Promise<void> {
+    try {
+      logger.info('GET /api/qualifications/export - 資格データCSVエクスポート開始', {
+        query: req.query,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      // クエリパラメータからフィルター条件を構築（全社員資格一覧と同じ形式）
+      const filter: any = {};
+
+      if (req.query.companyId && typeof req.query.companyId === 'string') {
+        filter.companyId = req.query.companyId;
+      }
+
+      if (req.query.departmentId && typeof req.query.departmentId === 'string') {
+        filter.departmentId = req.query.departmentId;
+      }
+
+      if (req.query.expirationStatus && typeof req.query.expirationStatus === 'string') {
+        filter.expirationStatus = req.query.expirationStatus;
+      }
+
+      if (req.query.keyword && typeof req.query.keyword === 'string') {
+        filter.searchKeyword = req.query.keyword.trim();
+      }
+
+      // フィルター条件が空の場合はundefinedを渡す
+      const filterToApply = Object.keys(filter).length > 0 ? filter : undefined;
+
+      const csvContent = await this.qualificationService.exportQualificationsCsv(filterToApply);
+
+      // CSVファイルとしてダウンロード可能なレスポンス設定
+      const now = new Date();
+      const dateString = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0');
+
+      const filename = `qualifications_export_${dateString}.csv`;
+
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+
+      logger.info('GET /api/qualifications/export - 資格データCSVエクスポート成功', {
+        filter: filterToApply,
+        filename,
+        csvSizeBytes: Buffer.byteLength(csvContent, 'utf8'),
+      });
+
+      res.status(200).send(csvContent);
+    } catch (error) {
+      logger.error('GET /api/qualifications/export - 資格データCSVエクスポートエラー', {
+        query: req.query,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      let statusCode = 500;
+      let userMessage = 'サーバーエラーが発生しました';
+
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes('フィルター条件が無効')) {
+          statusCode = 400;
+          userMessage = 'フィルター条件が無効です';
+        }
+      }
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : userMessage,
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+}

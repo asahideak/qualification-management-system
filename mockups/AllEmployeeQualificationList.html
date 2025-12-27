@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>全社員資格一覧ページ - モックアップ</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Material UI CDN -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 24px;
+    }
+
+    .page-title {
+      margin-bottom: 24px;
+    }
+
+    .filters-section {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-label {
+      font-size: 14px;
+      color: #666;
+    }
+
+    select, input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      min-width: 120px;
+    }
+
+    .search-input {
+      min-width: 200px;
+    }
+
+    .export-btn {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .export-btn:hover {
+      background: #1565c0;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .qualification-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    .qualification-table th,
+    .qualification-table td {
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .qualification-table th {
+      background: #f9f9f9;
+      font-weight: 500;
+      color: #666;
+      position: sticky;
+      top: 0;
+    }
+
+    .employee-name {
+      font-weight: 500;
+    }
+
+    .qualification-name {
+      color: #1976d2;
+    }
+
+    .expiration-status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-normal {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .status-warning {
+      background: #fff3cd;
+      color: #f57c00;
+    }
+
+    .status-expired {
+      background: #ffebee;
+      color: #d32f2f;
+    }
+
+    .company-tag {
+      background: #e3f2fd;
+      color: #1565c0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ページタイトル -->
+    <div class="page-title">
+      <h1>全社員資格一覧</h1>
+    </div>
+
+    <!-- フィルター・検索セクション -->
+    <div class="filters-section">
+      <div class="filter-group">
+        <label class="filter-label">会社</label>
+        <select>
+          <option value="">全ての会社</option>
+          <option value="1">株式会社本社</option>
+          <option value="2">関連会社A</option>
+          <option value="3">関連会社B</option>
+          <option value="4">関連会社C</option>
+          <option value="5">関連会社D</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">部署</label>
+        <select>
+          <option value="">全ての部署</option>
+          <option value="1">管理部</option>
+          <option value="2">技術部</option>
+          <option value="3">営業部</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">期限状況</label>
+        <select>
+          <option value="">全ての状況</option>
+          <option value="expired">期限切れ</option>
+          <option value="warning">期限間近（30日以内）</option>
+          <option value="normal">正常</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">検索</label>
+        <input type="text" class="search-input" placeholder="社員名または資格名で検索">
+      </div>
+
+      <button class="export-btn">CSVエクスポート</button>
+    </div>
+
+    <!-- 資格一覧テーブル -->
+    <div class="table-container">
+      <table class="qualification-table">
+        <thead>
+          <tr>
+            <th>社員名</th>
+            <th>会社</th>
+            <th>部署</th>
+            <th>資格名</th>
+            <th>取得日</th>
+            <th>有効期限</th>
+            <th>状況</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="employee-name">田中太郎</td>
+            <td><span class="company-tag">株式会社本社</span></td>
+            <td>管理部</td>
+            <td class="qualification-name">基本情報技術者試験</td>
+            <td>2023-04-15</td>
+            <td>永続</td>
+            <td><span class="expiration-status status-normal">正常</span></td>
+          </tr>
+          <tr>
+            <td class="employee-name">佐藤花子</td>
+            <td><span class="company-tag">関連会社A</span></td>
+            <td>技術部</td>
+            <td class="qualification-name">普通自動車第一種運転免許</td>
+            <td>2022-03-20</td>
+            <td>2025-03-20</td>
+            <td><span class="expiration-status status-warning">期限間近</span></td>
+          </tr>
+          <tr>
+            <td class="employee-name">鈴木次郎</td>
+            <td><span class="company-tag">関連会社B</span></td>
+            <td>営業部</td>
+            <td class="qualification-name">日商簿記検定2級</td>
+            <td>2021-11-10</td>
+            <td>永続</td>
+            <td><span class="expiration-status status-normal">正常</span></td>
+          </tr>
+          <tr>
+            <td class="employee-name">佐藤花子</td>
+            <td><span class="company-tag">関連会社A</span></td>
+            <td>技術部</td>
+            <td class="qualification-name">ファイナンシャル・プランニング技能士2級</td>
+            <td>2020-09-15</td>
+            <td>永続</td>
+            <td><span class="expiration-status status-normal">正常</span></td>
+          </tr>
+          <tr>
+            <td class="employee-name">山田三郎</td>
+            <td><span class="company-tag">関連会社C</span></td>
+            <td>技術部</td>
+            <td class="qualification-name">普通自動車第一種運転免許</td>
+            <td>2021-06-30</td>
+            <td>2024-06-30</td>
+            <td><span class="expiration-status status-expired">期限切れ</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model companies {
+  company_id   String        @id
+  company_name String
+  is_active    Boolean       @default(true)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime
+  departments  departments[]
+  employees    employees[]
+}
+
+model departments {
+  department_id   String      @id
+  department_name String
+  company_id      String
+  is_active       Boolean     @default(true)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime
+  companies       companies   @relation(fields: [company_id], references: [company_id])
+  employees       employees[]
+}
+
+model employees {
+  employee_id    String           @id
+  name           String
+  email          String           @unique
+  company_id     String
+  department_id  String?
+  created_at     DateTime         @default(now())
+  updated_at     DateTime
+  companies      companies        @relation(fields: [company_id], references: [company_id])
+  departments    departments?     @relation(fields: [department_id], references: [department_id])
+  qualifications qualifications[]
+}
+
+model qualification_masters {
+  qualification_master_id String           @id
+  master_name             String
+  validity_period         String
+  category                String?
+  is_active               Boolean          @default(true)
+  created_at              DateTime         @default(now())
+  updated_at              DateTime
+  qualifications          qualifications[]
+}
+
+model qualifications {
+  qualification_id        String                @id
+  employee_id             String
+  qualification_name      String
+  acquired_date           DateTime
+  expiration_date         String
+  qualification_master_id String
+  created_at              DateTime              @default(now())
+  updated_at              DateTime
+  employees               employees             @relation(fields: [employee_id], references: [employee_id])
+  qualification_masters   qualification_masters @relation(fields: [qualification_master_id], references: [qualification_master_id])
+}

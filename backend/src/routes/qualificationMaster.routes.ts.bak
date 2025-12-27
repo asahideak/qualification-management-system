@@ -1,0 +1,16 @@
+import { Router } from 'express';
+import { DefaultQualificationMasterController } from '../controllers/qualificationMaster.controller';
+
+const router = Router();
+const qualificationMasterController = new DefaultQualificationMasterController();
+
+// GET /api/qualification-masters - 資格マスター一覧取得
+router.get('/', (req, res) => qualificationMasterController.getAllQualificationMasters(req, res));
+
+// GET /api/qualification-masters/category/:category - カテゴリ別資格マスター取得
+router.get('/category/:category', (req, res) => qualificationMasterController.getQualificationMastersByCategory(req, res));
+
+// GET /api/qualification-masters/:id - 資格マスター詳細取得
+router.get('/:id', (req, res) => qualificationMasterController.getQualificationMasterById(req, res));
+
+export default router;

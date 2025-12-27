@@ -1,0 +1,139 @@
+import { Request, Response } from 'express';
+import { QualificationMasterService, DefaultQualificationMasterService } from '../services/qualificationMaster.service';
+import logger from '../lib/logger';
+import { ApiResponse, QualificationMaster } from '../types';
+
+export interface QualificationMasterController {
+  getAllQualificationMasters(req: Request, res: Response): Promise<void>;
+  getQualificationMasterById(req: Request, res: Response): Promise<void>;
+  getQualificationMastersByCategory(req: Request, res: Response): Promise<void>;
+}
+
+export class DefaultQualificationMasterController implements QualificationMasterController {
+  constructor(
+    private qualificationMasterService: QualificationMasterService = new DefaultQualificationMasterService()
+  ) {}
+
+  async getAllQualificationMasters(req: Request, res: Response): Promise<void> {
+    try {
+      logger.info('GET /api/qualification-masters - 資格マスター一覧取得開始', {
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      const qualificationMasters = await this.qualificationMasterService.getAllQualificationMasters();
+
+      const response: ApiResponse<QualificationMaster[]> = {
+        success: true,
+        data: qualificationMasters,
+        message: '資格マスター一覧を取得しました',
+      };
+
+      logger.info('GET /api/qualification-masters - 資格マスター一覧取得成功', {
+        count: qualificationMasters.length,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('GET /api/qualification-masters - 資格マスター一覧取得エラー', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : 'サーバーエラーが発生しました',
+      };
+
+      res.status(500).json(response);
+    }
+  }
+
+  async getQualificationMasterById(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      logger.info('GET /api/qualification-masters/:id - 資格マスター詳細取得開始', {
+        qualificationMasterId: id,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      const qualificationMaster = await this.qualificationMasterService.getQualificationMasterById(id);
+
+      const response: ApiResponse<QualificationMaster> = {
+        success: true,
+        data: qualificationMaster,
+        message: '資格マスター詳細を取得しました',
+      };
+
+      logger.info('GET /api/qualification-masters/:id - 資格マスター詳細取得成功', {
+        qualificationMasterId: id,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('GET /api/qualification-masters/:id - 資格マスター詳細取得エラー', {
+        qualificationMasterId: req.params.id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      const statusCode = error instanceof Error && error.message.includes('見つかりません') ? 404 : 500;
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : statusCode === 404 ? '資格マスターが見つかりません' : 'サーバーエラーが発生しました',
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+
+  async getQualificationMastersByCategory(req: Request, res: Response): Promise<void> {
+    try {
+      const { category } = req.params;
+      logger.info('GET /api/qualification-masters/category/:category - カテゴリ別資格マスター取得開始', {
+        category,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+      });
+
+      const qualificationMasters = await this.qualificationMasterService.getQualificationMastersByCategory(category);
+
+      const response: ApiResponse<QualificationMaster[]> = {
+        success: true,
+        data: qualificationMasters,
+        message: 'カテゴリ別資格マスターを取得しました',
+      };
+
+      logger.info('GET /api/qualification-masters/category/:category - カテゴリ別資格マスター取得成功', {
+        category,
+        count: qualificationMasters.length,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('GET /api/qualification-masters/category/:category - カテゴリ別資格マスター取得エラー', {
+        category: req.params.category,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      const statusCode = error instanceof Error && error.message.includes('指定されていません') ? 400 : 500;
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: process.env.NODE_ENV === 'development'
+          ? error instanceof Error ? error.message : String(error)
+          : statusCode === 400 ? '無効なリクエストです' : 'サーバーエラーが発生しました',
+      };
+
+      res.status(statusCode).json(response);
+    }
+  }
+}

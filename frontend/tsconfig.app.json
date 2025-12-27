@@ -18,6 +18,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": false,
@@ -27,5 +33,6 @@
     "noUncheckedSideEffectImports": true,
     "noImplicitAny": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/backup", "src/**/*.stories.tsx", "src/**/*.test.tsx"]
 }

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資格登録・管理 - モックアップ</title>
+
+    <!-- Material UI CDN -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .page-title {
+            color: #2471a3;
+            font-size: 24px;
+            font-weight: 500;
+            margin: 0 0 24px 0;
+        }
+
+        /* 社員選択セクション */
+        .employee-selector {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #2471a3;
+        }
+
+        /* 資格登録フォームセクション */
+        .registration-section {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            color: #2471a3;
+            font-size: 18px;
+            font-weight: 500;
+            margin: 0 0 16px 0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        .date-display {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            border-radius: 4px;
+            color: #666;
+        }
+
+        .register-btn {
+            background-color: #2471a3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+
+        .register-btn:hover {
+            background-color: #1a5a89;
+        }
+
+        /* 既存資格一覧セクション */
+        .existing-qualifications {
+        }
+
+        .qualification-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .qualification-table th,
+        .qualification-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .qualification-table th {
+            background-color: #f8f9fa;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .status-cell {
+            text-align: center;
+        }
+
+        .status-valid {
+            color: #2e7d32;
+            font-weight: 500;
+        }
+
+        .status-expiring {
+            color: #f57c00;
+            font-weight: 500;
+        }
+
+        .status-expired {
+            color: #d32f2f;
+            font-weight: 500;
+        }
+
+        .action-btn {
+            background: none;
+            border: 1px solid #ccc;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .edit-btn {
+            color: #2471a3;
+            border-color: #2471a3;
+        }
+
+        .edit-btn:hover {
+            background-color: #f0f7ff;
+        }
+
+        .delete-btn {
+            color: #d32f2f;
+            border-color: #d32f2f;
+        }
+
+        .delete-btn:hover {
+            background-color: #fff5f5;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #666;
+            padding: 32px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .qualification-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="page-title">資格登録・管理</h1>
+
+        <!-- 社員選択 -->
+        <div class="employee-selector">
+            <div class="form-group">
+                <label for="employee-select">社員選択</label>
+                <select id="employee-select">
+                    <option value="">社員を選択してください</option>
+                    <option value="1">田中太郎（本社・管理部）</option>
+                    <option value="2">佐藤花子（関連会社A・技術部）</option>
+                    <option value="3">鈴木次郎（関連会社B・営業部）</option>
+                    <option value="4">高橋美咲（関連会社C・企画部）</option>
+                    <option value="5">渡辺健一（関連会社D・営業部）</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 資格登録フォーム -->
+        <div class="registration-section">
+            <h2 class="section-title">新規資格登録</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="qualification-name">資格名</label>
+                    <input
+                        type="text"
+                        id="qualification-name"
+                        placeholder="基本情報技術者試験"
+                        list="qualification-suggestions"
+                    />
+                    <datalist id="qualification-suggestions">
+                        <option value="基本情報技術者試験">
+                        <option value="応用情報技術者試験">
+                        <option value="普通自動車第一種運転免許">
+                        <option value="日商簿記検定2級">
+                        <option value="ファイナンシャル・プランニング技能士2級">
+                        <option value="ITパスポート試験">
+                        <option value="宅地建物取引士">
+                        <option value="中小企業診断士">
+                    </datalist>
+                </div>
+
+                <div class="form-group">
+                    <label for="acquired-date">取得日</label>
+                    <input type="date" id="acquired-date" />
+                </div>
+
+                <div class="form-group">
+                    <label>有効期限</label>
+                    <div class="date-display" id="expiration-display">
+                        取得日を入力すると自動計算されます
+                    </div>
+                </div>
+            </div>
+
+            <button class="register-btn" onclick="registerQualification()">登録</button>
+        </div>
+
+        <!-- 既存資格一覧 -->
+        <div class="existing-qualifications">
+            <h2 class="section-title">保有資格一覧</h2>
+
+            <table class="qualification-table">
+                <thead>
+                    <tr>
+                        <th>資格名</th>
+                        <th>取得日</th>
+                        <th>有効期限</th>
+                        <th>状態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="qualification-list">
+                    <tr>
+                        <td colspan="5" class="no-data">社員を選択すると保有資格が表示されます</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // サンプルデータ
+        const employeeQualifications = {
+            "1": [ // 田中太郎
+                {
+                    name: "基本情報技術者試験",
+                    acquiredDate: "2023-04-15",
+                    expirationDate: "永続",
+                    status: "valid"
+                },
+                {
+                    name: "普通自動車第一種運転免許",
+                    acquiredDate: "2022-01-10",
+                    expirationDate: "2025-01-10",
+                    status: "valid"
+                }
+            ],
+            "2": [ // 佐藤花子
+                {
+                    name: "応用情報技術者試験",
+                    acquiredDate: "2023-10-15",
+                    expirationDate: "永続",
+                    status: "valid"
+                },
+                {
+                    name: "日商簿記検定2級",
+                    acquiredDate: "2022-06-20",
+                    expirationDate: "永続",
+                    status: "valid"
+                }
+            ],
+            "3": [ // 鈴木次郎
+                {
+                    name: "普通自動車第一種運転免許",
+                    acquiredDate: "2021-12-05",
+                    expirationDate: "2024-12-05",
+                    status: "expiring"
+                }
+            ]
+        };
+
+        // 社員選択時の処理
+        document.getElementById('employee-select').addEventListener('change', function() {
+            const employeeId = this.value;
+            updateQualificationList(employeeId);
+        });
+
+        // 取得日入力時の有効期限自動計算
+        document.getElementById('acquired-date').addEventListener('change', function() {
+            const acquiredDate = this.value;
+            const qualificationName = document.getElementById('qualification-name').value;
+
+            if (acquiredDate) {
+                calculateExpiration(qualificationName, acquiredDate);
+            }
+        });
+
+        // 資格名変更時の有効期限再計算
+        document.getElementById('qualification-name').addEventListener('input', function() {
+            const qualificationName = this.value;
+            const acquiredDate = document.getElementById('acquired-date').value;
+
+            if (acquiredDate) {
+                calculateExpiration(qualificationName, acquiredDate);
+            }
+        });
+
+        function updateQualificationList(employeeId) {
+            const tbody = document.getElementById('qualification-list');
+
+            if (!employeeId || !employeeQualifications[employeeId]) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">この社員の資格情報はありません</td></tr>';
+                return;
+            }
+
+            const qualifications = employeeQualifications[employeeId];
+            tbody.innerHTML = qualifications.map(qual => `
+                <tr>
+                    <td>${qual.name}</td>
+                    <td>${formatDate(qual.acquiredDate)}</td>
+                    <td>${qual.expirationDate === '永続' ? '永続' : formatDate(qual.expirationDate)}</td>
+                    <td class="status-cell">
+                        <span class="status-${qual.status}">
+                            ${getStatusText(qual.status)}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editQualification('${qual.name}')">編集</button>
+                        <button class="action-btn delete-btn" onclick="deleteQualification('${qual.name}')">削除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function calculateExpiration(qualificationName, acquiredDate) {
+            // 資格マスターデータ（簡易版）
+            const qualificationMasters = {
+                "基本情報技術者試験": { validityPeriod: "永続" },
+                "応用情報技術者試験": { validityPeriod: "永続" },
+                "普通自動車第一種運転免許": { validityPeriod: 3 },
+                "日商簿記検定2級": { validityPeriod: "永続" },
+                "ファイナンシャル・プランニング技能士2級": { validityPeriod: "永続" },
+                "ITパスポート試験": { validityPeriod: "永続" },
+                "宅地建物取引士": { validityPeriod: 5 },
+                "中小企業診断士": { validityPeriod: 5 }
+            };
+
+            const master = qualificationMasters[qualificationName];
+            let expirationText;
+
+            if (master && master.validityPeriod === "永続") {
+                expirationText = "永続";
+            } else if (master && typeof master.validityPeriod === 'number') {
+                const acquired = new Date(acquiredDate);
+                const expiration = new Date(acquired);
+                expiration.setFullYear(acquired.getFullYear() + master.validityPeriod);
+                expirationText = expiration.toISOString().split('T')[0];
+            } else {
+                expirationText = "資格マスターでの登録が必要です";
+            }
+
+            document.getElementById('expiration-display').textContent = expirationText;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr === '永続') return dateStr;
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ja-JP');
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'valid': return '有効';
+                case 'expiring': return '期限間近';
+                case 'expired': return '期限切れ';
+                default: return '不明';
+            }
+        }
+
+        function registerQualification() {
+            const employeeId = document.getElementById('employee-select').value;
+            const qualificationName = document.getElementById('qualification-name').value;
+            const acquiredDate = document.getElementById('acquired-date').value;
+
+            if (!employeeId) {
+                alert('社員を選択してください');
+                return;
+            }
+
+            if (!qualificationName) {
+                alert('資格名を入力してください');
+                return;
+            }
+
+            if (!acquiredDate) {
+                alert('取得日を入力してください');
+                return;
+            }
+
+            alert('資格を登録しました（実際の機能は React 実装時に追加）');
+
+            // フォームリセット
+            document.getElementById('qualification-name').value = '';
+            document.getElementById('acquired-date').value = '';
+            document.getElementById('expiration-display').textContent = '取得日を入力すると自動計算されます';
+        }
+
+        function editQualification(qualificationName) {
+            alert(`「${qualificationName}」を編集します（実際の機能は React 実装時に追加）`);
+        }
+
+        function deleteQualification(qualificationName) {
+            if (confirm(`「${qualificationName}」を削除しますか？`)) {
+                alert('資格を削除しました（実際の機能は React 実装時に追加）');
+            }
+        }
+    </script>
+</body>
+</html>

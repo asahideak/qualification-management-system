@@ -1,0 +1,623 @@
+import prisma from '../lib/database';
+import logger, { PerformanceTracker } from '../lib/logger';
+import {
+  Qualification,
+  QualificationRegistrationForm,
+  QualificationEditForm,
+  AllEmployeeQualificationTableRow,
+  AllEmployeeQualificationFilter,
+} from '../types';
+
+export interface QualificationRepository {
+  create(data: QualificationRegistrationForm): Promise<Qualification>;
+  findById(id: string): Promise<Qualification | null>;
+  update(id: string, data: Partial<QualificationEditForm>): Promise<Qualification>;
+  delete(id: string): Promise<void>;
+  findByEmployeeId(employeeId: string): Promise<Qualification[]>;
+  checkDuplicateQualification(employeeId: string, qualificationName: string, excludeId?: string): Promise<boolean>;
+  findAllEmployeeQualifications(filter?: AllEmployeeQualificationFilter): Promise<AllEmployeeQualificationTableRow[]>;
+}
+
+export class PrismaQualificationRepository implements QualificationRepository {
+  async create(data: QualificationRegistrationForm): Promise<Qualification> {
+    const tracker = new PerformanceTracker('Qualification.create');
+    try {
+      logger.debug('資格登録開始', {
+        employeeId: data.employeeId,
+        qualificationName: data.qualificationName,
+        acquiredDate: data.acquiredDate,
+      });
+
+      // トランザクション内で実行
+      const qualification = await prisma.$transaction(async (tx) => {
+        // 社員の存在確認
+        const employee = await tx.employee.findUnique({
+          where: { id: data.employeeId },
+        });
+
+        if (!employee) {
+          throw new Error('指定された社員が見つかりません');
+        }
+
+        // 重複チェック
+        const existingQualification = await tx.qualification.findFirst({
+          where: {
+            employeeId: data.employeeId,
+            qualificationName: data.qualificationName,
+          },
+        });
+
+        if (existingQualification) {
+          throw new Error('同じ社員に同じ名前の資格が既に登録されています');
+        }
+
+        // 資格マスター存在確認（qualificationMasterIdが指定されている場合）
+        let qualificationMasterId = data.qualificationMasterId;
+        let expirationDate = 'permanent';
+
+        if (qualificationMasterId) {
+          const master = await tx.qualificationMaster.findUnique({
+            where: { id: qualificationMasterId },
+          });
+
+          if (!master) {
+            throw new Error('指定された資格マスターが見つかりません');
+          }
+
+          if (!master.isActive) {
+            throw new Error('指定された資格マスターは無効です');
+          }
+
+          // 有効期限計算
+          if (master.validityPeriod !== 'permanent') {
+            const acquiredDate = new Date(data.acquiredDate);
+            const expiration = new Date(acquiredDate);
+            expiration.setFullYear(expiration.getFullYear() + parseInt(master.validityPeriod));
+            expirationDate = expiration.toISOString().split('T')[0];
+          }
+        } else {
+          // 資格マスターIDが指定されていない場合、資格名で検索して既存マスターを使用
+          const master = await tx.qualificationMaster.findFirst({
+            where: {
+              name: data.qualificationName,
+              isActive: true,
+            },
+          });
+
+          if (master) {
+            qualificationMasterId = master.id;
+            if (master.validityPeriod !== 'permanent') {
+              const acquiredDate = new Date(data.acquiredDate);
+              const expiration = new Date(acquiredDate);
+              expiration.setFullYear(expiration.getFullYear() + parseInt(master.validityPeriod));
+              expirationDate = expiration.toISOString().split('T')[0];
+            }
+          } else {
+            // デフォルトマスターを作成（永続資格として）
+            const newMaster = await tx.qualificationMaster.create({
+              data: {
+                name: data.qualificationName,
+                validityPeriod: 'permanent',
+                isActive: true,
+              },
+            });
+            qualificationMasterId = newMaster.id;
+          }
+        }
+
+        // 資格レコード作成
+        return await tx.qualification.create({
+          data: {
+            employeeId: data.employeeId,
+            qualificationName: data.qualificationName,
+            acquiredDate: new Date(data.acquiredDate),
+            expirationDate,
+            qualificationMasterId: qualificationMasterId!,
+          },
+        });
+      });
+
+      logger.info('資格登録成功', {
+        qualificationId: qualification.id,
+        employeeId: data.employeeId,
+        qualificationName: data.qualificationName,
+      });
+
+      const result: Qualification = {
+        qualificationId: qualification.id,
+        employeeId: qualification.employeeId,
+        qualificationName: qualification.qualificationName,
+        acquiredDate: qualification.acquiredDate.toISOString().split('T')[0],
+        expirationDate: qualification.expirationDate,
+        qualificationMasterId: qualification.qualificationMasterId,
+        createdAt: qualification.createdAt.toISOString(),
+        updatedAt: qualification.updatedAt.toISOString(),
+      };
+
+      tracker.end({ qualificationId: qualification.id });
+      return result;
+    } catch (error) {
+      logger.error('資格登録エラー', {
+        employeeId: data.employeeId,
+        qualificationName: data.qualificationName,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw error;
+    }
+  }
+
+  async findById(id: string): Promise<Qualification | null> {
+    const tracker = new PerformanceTracker('Qualification.findById');
+    try {
+      logger.debug('資格詳細取得開始', { qualificationId: id });
+
+      const qualification = await prisma.qualifications.findUnique({
+        where: { id },
+        include: {
+          employee: true,
+          qualificationMaster: true,
+        },
+      });
+
+      if (!qualification) {
+        logger.warn('資格が見つかりません', { qualificationId: id });
+        tracker.end({ found: false });
+        return null;
+      }
+
+      logger.info('資格詳細取得成功', { qualificationId: id });
+
+      const result: Qualification = {
+        qualificationId: qualification.id,
+        employeeId: qualification.employeeId,
+        qualificationName: qualification.qualificationName,
+        acquiredDate: qualification.acquiredDate.toISOString().split('T')[0],
+        expirationDate: qualification.expirationDate,
+        qualificationMasterId: qualification.qualificationMasterId,
+        createdAt: qualification.createdAt.toISOString(),
+        updatedAt: qualification.updatedAt.toISOString(),
+      };
+
+      tracker.end({ found: true });
+      return result;
+    } catch (error) {
+      logger.error('資格詳細取得エラー', {
+        qualificationId: id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw new Error('資格詳細の取得に失敗しました');
+    }
+  }
+
+  async update(id: string, data: Partial<QualificationEditForm>): Promise<Qualification> {
+    const tracker = new PerformanceTracker('Qualification.update');
+    try {
+      logger.debug('資格更新開始', {
+        qualificationId: id,
+        updateData: data,
+      });
+
+      const qualification = await prisma.$transaction(async (tx) => {
+        // 既存資格の存在確認
+        const existingQualification = await tx.qualification.findUnique({
+          where: { id },
+        });
+
+        if (!existingQualification) {
+          throw new Error('更新対象の資格が見つかりません');
+        }
+
+        // 重複チェック（資格名が変更される場合）
+        if (data.qualificationName && data.qualificationName !== existingQualification.qualificationName) {
+          const duplicate = await tx.qualification.findFirst({
+            where: {
+              employeeId: existingQualification.employeeId,
+              qualificationName: data.qualificationName,
+              id: { not: id },
+            },
+          });
+
+          if (duplicate) {
+            throw new Error('同じ社員に同じ名前の資格が既に登録されています');
+          }
+        }
+
+        // 更新データの準備
+        const updateData: any = {
+          updatedAt: new Date(),
+        };
+
+        if (data.qualificationName) {
+          updateData.qualificationName = data.qualificationName;
+        }
+
+        if (data.acquiredDate) {
+          updateData.acquiredDate = new Date(data.acquiredDate);
+
+          // 取得日が変更された場合、有効期限を再計算
+          const master = await tx.qualificationMaster.findUnique({
+            where: { id: existingQualification.qualificationMasterId },
+          });
+
+          if (master && master.validityPeriod !== 'permanent') {
+            const acquiredDate = new Date(data.acquiredDate);
+            const expiration = new Date(acquiredDate);
+            expiration.setFullYear(expiration.getFullYear() + parseInt(master.validityPeriod));
+            updateData.expirationDate = expiration.toISOString().split('T')[0];
+          }
+        }
+
+        if (data.qualificationMasterId && data.qualificationMasterId !== existingQualification.qualificationMasterId) {
+          const master = await tx.qualificationMaster.findUnique({
+            where: { id: data.qualificationMasterId },
+          });
+
+          if (!master) {
+            throw new Error('指定された資格マスターが見つかりません');
+          }
+
+          if (!master.isActive) {
+            throw new Error('指定された資格マスターは無効です');
+          }
+
+          updateData.qualificationMasterId = data.qualificationMasterId;
+
+          // マスター変更の場合、有効期限を再計算
+          if (master.validityPeriod !== 'permanent') {
+            const acquiredDate = data.acquiredDate
+              ? new Date(data.acquiredDate)
+              : existingQualification.acquiredDate;
+            const expiration = new Date(acquiredDate);
+            expiration.setFullYear(expiration.getFullYear() + parseInt(master.validityPeriod));
+            updateData.expirationDate = expiration.toISOString().split('T')[0];
+          } else {
+            updateData.expirationDate = 'permanent';
+          }
+        }
+
+        return await tx.qualification.update({
+          where: { id },
+          data: updateData,
+        });
+      });
+
+      logger.info('資格更新成功', {
+        qualificationId: id,
+        updatedFields: Object.keys(data),
+      });
+
+      const result: Qualification = {
+        qualificationId: qualification.id,
+        employeeId: qualification.employeeId,
+        qualificationName: qualification.qualificationName,
+        acquiredDate: qualification.acquiredDate.toISOString().split('T')[0],
+        expirationDate: qualification.expirationDate,
+        qualificationMasterId: qualification.qualificationMasterId,
+        createdAt: qualification.createdAt.toISOString(),
+        updatedAt: qualification.updatedAt.toISOString(),
+      };
+
+      tracker.end({ qualificationId: id });
+      return result;
+    } catch (error) {
+      logger.error('資格更新エラー', {
+        qualificationId: id,
+        updateData: data,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw error;
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    const tracker = new PerformanceTracker('Qualification.delete');
+    try {
+      logger.debug('資格削除開始', { qualificationId: id });
+
+      const qualification = await prisma.qualifications.findUnique({
+        where: { id },
+      });
+
+      if (!qualification) {
+        logger.warn('削除対象の資格が見つかりません', { qualificationId: id });
+        tracker.end({ found: false });
+        throw new Error('削除対象の資格が見つかりません');
+      }
+
+      await prisma.qualifications.delete({
+        where: { id },
+      });
+
+      logger.info('資格削除成功', {
+        qualificationId: id,
+        employeeId: qualification.employeeId,
+        qualificationName: qualification.qualificationName,
+      });
+
+      tracker.end({ qualificationId: id });
+    } catch (error) {
+      logger.error('資格削除エラー', {
+        qualificationId: id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw error;
+    }
+  }
+
+  async findByEmployeeId(employeeId: string): Promise<Qualification[]> {
+    const tracker = new PerformanceTracker('Qualification.findByEmployeeId');
+    try {
+      logger.debug('社員別資格一覧取得開始', { employeeId });
+
+      const qualifications = await prisma.qualifications.findMany({
+        where: { employeeId },
+        include: {
+          qualificationMaster: true,
+        },
+        orderBy: [
+          { acquiredDate: 'desc' },
+          { qualificationName: 'asc' },
+        ],
+      });
+
+      logger.info('社員別資格一覧取得成功', {
+        employeeId,
+        count: qualifications.length,
+      });
+
+      const result: Qualification[] = qualifications.map(qual => ({
+        qualificationId: qual.id,
+        employeeId: qual.employeeId,
+        qualificationName: qual.qualificationName,
+        acquiredDate: qual.acquiredDate.toISOString().split('T')[0],
+        expirationDate: qual.expirationDate,
+        qualificationMasterId: qual.qualificationMasterId,
+        createdAt: qual.createdAt.toISOString(),
+        updatedAt: qual.updatedAt.toISOString(),
+      }));
+
+      tracker.end({ recordCount: result.length, employeeId });
+      return result;
+    } catch (error) {
+      logger.error('社員別資格一覧取得エラー', {
+        employeeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw new Error('社員別資格一覧の取得に失敗しました');
+    }
+  }
+
+  async checkDuplicateQualification(employeeId: string, qualificationName: string, excludeId?: string): Promise<boolean> {
+    const tracker = new PerformanceTracker('Qualification.checkDuplicateQualification');
+    try {
+      logger.debug('資格重複チェック開始', {
+        employeeId,
+        qualificationName,
+        excludeId,
+      });
+
+      const whereCondition: any = {
+        employeeId,
+        qualificationName,
+      };
+
+      if (excludeId) {
+        whereCondition.id = { not: excludeId };
+      }
+
+      const existingQualification = await prisma.qualifications.findFirst({
+        where: whereCondition,
+      });
+
+      const isDuplicate = !!existingQualification;
+      logger.debug('資格重複チェック完了', {
+        employeeId,
+        qualificationName,
+        isDuplicate,
+      });
+
+      tracker.end({ isDuplicate });
+      return isDuplicate;
+    } catch (error) {
+      logger.error('資格重複チェックエラー', {
+        employeeId,
+        qualificationName,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw new Error('資格重複チェックに失敗しました');
+    }
+  }
+
+  async findAllEmployeeQualifications(filter?: AllEmployeeQualificationFilter): Promise<AllEmployeeQualificationTableRow[]> {
+    const tracker = new PerformanceTracker('Qualification.findAllEmployeeQualifications');
+    try {
+      logger.debug('全社員資格一覧取得開始', { filter });
+
+      // 動的WHERE条件構築
+      const whereConditions: any[] = [];
+
+      // 会社フィルター
+      if (filter?.companyId) {
+        whereConditions.push({
+          employee: {
+            companyId: filter.companyId,
+          },
+        });
+      }
+
+      // 部署フィルター
+      if (filter?.departmentId) {
+        whereConditions.push({
+          employee: {
+            departmentId: filter.departmentId,
+          },
+        });
+      }
+
+      // キーワード検索（社員名または資格名）
+      if (filter?.searchKeyword) {
+        const keyword = filter.searchKeyword.trim();
+        whereConditions.push({
+          OR: [
+            {
+              employee: {
+                name: {
+                  contains: keyword,
+                },
+              },
+            },
+            {
+              qualificationName: {
+                contains: keyword,
+              },
+            },
+          ],
+        });
+      }
+
+      // 期限ステータスフィルター
+      if (filter?.expirationStatus && ['expired', 'warning', 'normal'].includes(filter.expirationStatus)) {
+        const now = new Date();
+        const warningDate = new Date();
+        warningDate.setDate(warningDate.getDate() + 90); // 90日後
+
+        switch (filter.expirationStatus) {
+          case 'expired':
+            whereConditions.push({
+              expirationDate: {
+                not: 'permanent',
+                lt: now.toISOString().split('T')[0],
+              },
+            });
+            break;
+          case 'warning':
+            whereConditions.push({
+              AND: [
+                {
+                  expirationDate: {
+                    not: 'permanent',
+                    gte: now.toISOString().split('T')[0],
+                  },
+                },
+                {
+                  expirationDate: {
+                    lte: warningDate.toISOString().split('T')[0],
+                  },
+                },
+              ],
+            });
+            break;
+          case 'normal':
+            whereConditions.push({
+              OR: [
+                {
+                  expirationDate: 'permanent',
+                },
+                {
+                  expirationDate: {
+                    gt: warningDate.toISOString().split('T')[0],
+                  },
+                },
+              ],
+            });
+            break;
+        }
+      }
+
+      const whereClause = whereConditions.length > 0 ? { AND: whereConditions } : {};
+
+      // 複合JOIN クエリ実行
+      const qualifications = await prisma.qualifications.findMany({
+        where: whereClause,
+        include: {
+          employee: {
+            include: {
+              company: true,
+              department: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            employee: {
+              company: {
+                name: 'asc',
+              },
+            },
+          },
+          {
+            employee: {
+              name: 'asc',
+            },
+          },
+          {
+            qualificationName: 'asc',
+          },
+        ],
+      });
+
+      logger.info('全社員資格一覧取得成功', {
+        filter,
+        count: qualifications.length,
+      });
+
+      // 期限ステータス計算とレスポンス形式変換
+      const result: AllEmployeeQualificationTableRow[] = qualifications.map(qual => {
+        let status: 'normal' | 'warning' | 'expired';
+        let statusDisplayText: string;
+
+        if (qual.expirationDate === 'permanent') {
+          status = 'normal';
+          statusDisplayText = '正常';
+        } else {
+          const expirationDate = new Date(qual.expirationDate);
+          const today = new Date();
+          const warningThreshold = new Date();
+          warningThreshold.setDate(warningThreshold.getDate() + 90); // 90日後
+
+          if (expirationDate < today) {
+            status = 'expired';
+            statusDisplayText = '期限切れ';
+          } else if (expirationDate <= warningThreshold) {
+            status = 'warning';
+            statusDisplayText = '期限間近';
+          } else {
+            status = 'normal';
+            statusDisplayText = '正常';
+          }
+        }
+
+        return {
+          employeeId: qual.employee.id,
+          employeeName: qual.employee.name,
+          companyId: qual.employee.companyId,
+          companyName: qual.employee.company.name,
+          departmentId: qual.employee.departmentId || undefined,
+          departmentName: qual.employee.department?.name || undefined,
+          qualificationId: qual.id,
+          qualificationName: qual.qualificationName,
+          acquiredDate: qual.acquiredDate.toISOString().split('T')[0],
+          expirationDate: qual.expirationDate,
+          status,
+          statusDisplayText,
+        };
+      });
+
+      tracker.end({ recordCount: result.length });
+      return result;
+    } catch (error) {
+      logger.error('全社員資格一覧取得エラー', {
+        filter,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      tracker.end({ error: true });
+      throw new Error('全社員資格一覧の取得に失敗しました');
+    }
+  }
+}

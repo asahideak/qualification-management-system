@@ -1,0 +1,28 @@
+import { Router } from 'express';
+import { DefaultQualificationController } from '../controllers/qualification.controller';
+
+const router = Router();
+const qualificationController = new DefaultQualificationController();
+
+// POST /api/qualifications - 資格登録
+router.post('/', (req, res) => qualificationController.createQualification(req, res));
+
+// PUT /api/qualifications/:id - 資格更新
+router.put('/:id', (req, res) => qualificationController.updateQualification(req, res));
+
+// DELETE /api/qualifications/:id - 資格削除
+router.delete('/:id', (req, res) => qualificationController.deleteQualification(req, res));
+
+// GET /api/qualifications/all-employees - 全社員資格一覧取得（スライス4-A）
+router.get('/all-employees', (req, res) => qualificationController.getAllEmployeeQualifications(req, res));
+
+// GET /api/qualifications/export - 資格データCSVエクスポート（スライス5）
+router.get('/export', (req, res) => qualificationController.exportQualificationsCsv(req, res));
+
+// GET /api/qualifications/:id - 資格詳細取得
+router.get('/:id', (req, res) => qualificationController.getQualificationById(req, res));
+
+// GET /api/employees/:employeeId/qualifications - 社員別資格一覧取得（employeeルーターから移動）
+// Note: このルートは現在employeeルーターで定義されているため、統合時に調整が必要
+
+export default router;
